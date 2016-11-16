@@ -42,6 +42,7 @@
 
 ReadModflowBinary <- function(path, data.type=c("array", "flow"),
                               rm.totim.0=FALSE) {
+ 
   if (!file.exists(path))
     stop("binary file can not be found")
 
@@ -102,7 +103,7 @@ ReadModflowBinary <- function(path, data.type=c("array", "flow"),
   else
     valid.desc <- c("storage", "constant head", "flow right face",
                     "flow front face", "flow lower face", "wells", "drains",
-                    "river leakage")
+                    "river leakage", "recharge")
   lst <- list()
   repeat {
     kstp <- readBin(con, "integer", n=1L, size=4L)
@@ -114,6 +115,7 @@ ReadModflowBinary <- function(path, data.type=c("array", "flow"),
       totim  <- readBin(con, "numeric", n=1L, size=nbytes)
       desc   <- readBin(readBin(con, "raw", n=16L, size=1L), "character", n=1L)
       desc <- .TidyDescription(desc)
+     
       if (!desc %in% valid.desc) break
       ncol   <- readBin(con, "integer", n=1L, size=4L)
       nrow   <- readBin(con, "integer", n=1L, size=4L)
@@ -124,14 +126,18 @@ ReadModflowBinary <- function(path, data.type=c("array", "flow"),
                                       ilay=ilay, pertim=pertim, totim=totim)
 
     } else {
+     
       desc <- readBin(readBin(con, "raw", n=16L, size=1L), "character", n=1L)
       desc <- .TidyDescription(desc)
+      
       if (!desc %in% valid.desc) break
+      
       ncol <- readBin(con, "integer", n=1L, size=4L)
       nrow <- readBin(con, "integer", n=1L, size=4L)
       nlay <- readBin(con, "integer", n=1L, size=4L)
       if (nlay > 0) {
         d <- .Read3dArray(con, nrow, ncol, nlay, nbytes)
+        lst[[length(lst) + 1L]] <- list(d=d, kstp=kstp, kper=kper, desc=desc)
       } else {
         nlay <- abs(nlay)
         itype  <- readBin(con, "integer", n=1L, size=4L)
